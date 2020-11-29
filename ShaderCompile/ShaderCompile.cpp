@@ -327,7 +327,23 @@ static CSwitchableMutex<Private::g_mtxSyncObjMT> g_mtxGlobal;
 static CSwitchableMutex<Private::g_mtxSyncObjMT2> g_mtxMsgReport;
 }; // namespace Threading
 
-static void ErrMsgDispatchMsgLine( const char* szCommand, const char* szMsgLine, std::string_view szName )
+// Access to global data should be synchronized by these global locks
+#define GLOBAL_DATA_MTX_LOCK()   Threading::g_mtxGlobal.Lock()
+#define GLOBAL_DATA_MTX_UNLOCK() Threading::g_mtxGlobal.Unlock()
+
+#ifdef USE_DXC
+static char* FindNextLine( char* start )
+{
+	auto mark = strchr( start, '^' );
+	if ( !mark )
+		return strchr( start, '\n' );
+	return strchr( mark, '\n' );
+}
+#else
+#define FindNextLine( start ) strchr( start, '\n' )
+#endif
+
+static void ErrMsgDispatchMsgLine( const char* szCommand, const char* szMsgLine, const char* szName )
 {
 	std::lock_guard guard{ Threading::g_mtxMsgReport };
 	auto& msg = g_CompilerMsg[szName];
@@ -336,10 +352,14 @@ static void ErrMsgDispatchMsgLine( const char* szCommand, const char* szMsgLine,
 	char* start2 = start;
 
 	// Now store the message with the command it was generated from
-	for ( ; start2 < end && ( start = strchr( start2, '\n' ) ); start2 = start + 1 )
+	for ( ; start2 < end && ( start = FindNextLine( start2 ) ); start2 = start + 1 )
 	{
 		*start = 0;
+#ifdef USE_DXC
+		if ( strstr( start2, "warning:" ) )
+#else
 		if ( strstr( start2, "warning X" ) )
+#endif
 			msg.warning[start2].SetMsgReportedCommand( szCommand );
 		else
 			msg.error[start2].SetMsgReportedCommand( szCommand );
@@ -347,7 +367,11 @@ static void ErrMsgDispatchMsgLine( const char* szCommand, const char* szMsgLine,
 
 	if ( start2 < end )
 	{
+#ifdef USE_DXC
+		if ( strstr( start2, "warning:" ) )
+#else
 		if ( strstr( start2, "warning X" ) )
+#endif
 			msg.warning[start2].SetMsgReportedCommand( szCommand );
 		else
 			msg.error[start2].SetMsgReportedCommand( szCommand );
@@ -1375,8 +1399,10 @@ static void PrintCompileErrors( bool skipWarnings )
 					const uint64_t numReported = cmi.GetNumTimesReported();
 
 					std::string m = trim( szMsg );
+#ifndef USE_DXC
 					if ( size_t find = m.find( searchPat ); find != std::string::npos && find >= cwdLen )
 						m = m.replace( find - cwdLen, cwdLen, "" );
+#endif
 					std::cout << clr::escaped( "\033[2K"sv ) << m << "\nReported "sv << clr::green << numReported << clr::reset << " time(s)"sv << std::endl;
 				}
 			}
@@ -1393,8 +1419,10 @@ static void PrintCompileErrors( bool skipWarnings )
 				const uint64_t numReported = cmi.GetNumTimesReported();
 
 				std::string m = trim( szMsg );
+#ifndef USE_DXC
 				if ( size_t find = m.find( searchPat ); find != std::string::npos && find >= cwdLen )
 					m = m.replace( find - cwdLen, cwdLen, "" );
+#endif
 				std::cout << clr::escaped( "\033[2K"sv ) << m << "\nReported "sv << clr::green << numReported << clr::reset << " time(s), example command: "sv << std::endl;
 
 				std::cout << clr::escaped( "\033[2K"sv ) << "    "sv << clr::green << cmd << clr::reset << std::endl;

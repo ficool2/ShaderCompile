@@ -89,8 +89,16 @@ static bool ReadFile( const fs::path& name, const std::string& srcPath, const st
 		return false;
 	}
 
-	auto rawName = fullPath.string().substr( srcPath.size() + 1 );
-	std::for_each( rawName.begin(), rawName.end(), []( char& c ) { if ( c == '\\' ) c = '/'; } );
+	std::string rawName;
+
+	std::error_code ec;
+	auto rel = fs::relative( fullPath, srcPath, ec );
+
+	if ( !ec )
+		rawName = rel.generic_string();
+	else
+		rawName = fullPath.filename().generic_string();
+
 	includes.emplace_back( rawName );
 	std::ifstream file( fullPath );
 	if ( file.fail() )

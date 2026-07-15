@@ -1477,8 +1477,8 @@ int main( int argc, const char* argv[] )
 	{
 		cmdLine.add( "", true, 1, 0, "", "-game" );
 		cmdLine.add( "", true, 1, 0, "", "-shaderpath" );
-		cmdLine.add( "", true, 1, 0, "", "-includepath" );
-		cmdLine.add( "", true, 1, 0, "", "-outpath" );
+		cmdLine.add( "", false, 1, 0, "", "-includepath" );
+		cmdLine.add( "", false, 1, 0, "", "-outpath" );
 		cmdLine.add( "0", false, 1, 0, "", "-threads" );
 		cmdLine.add( "", false, 0, 0, "", "-nompi" );
 		cmdLine.add( "", false, 0, 0, "", "-nop4" );
@@ -1490,8 +1490,8 @@ int main( int argc, const char* argv[] )
 	{
 		cmdLine.add( "", true, -1, ',', "Sets shader version", "-ver", "/ver", new ez::ezOptionValidator{ ez::ezOptionValidator::T, ez::ezOptionValidator::IN, validModels, std::size( validModels ), false } );
 		cmdLine.add( "", true, 1, 0, "Base path for shaders", "-shaderpath", "/shaderpath" );
-		cmdLine.add( "", true, 1, 0, "Include path for shaders", "-includepath", "/includepath" );
-		cmdLine.add( "", true, 1, 0, "Output path for shaders and includes", "-outpath", "/outpath" );
+		cmdLine.add( "", false, 1, 0, "Include path for shaders", "-includepath", "/includepath" );
+		cmdLine.add( "", false, 1, 0, "Output path for shaders and includes", "-outpath", "/outpath" );
 		cmdLine.add( "", false, 0, 0, "Skip crc check during compilation", "-force", "/force" );
 		cmdLine.add( "", false, 0, 0, "Calculate crc for shader", "-crc", "/crc" );
 		cmdLine.add( "", false, 0, 0, "Generate only header", "-dynamic", "/dynamic" );

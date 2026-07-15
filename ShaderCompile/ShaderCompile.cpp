@@ -1612,7 +1612,7 @@ int main( int argc, const char* argv[] )
 	g_pShaderPath = fs::absolute( std::move( shaderpath ) );
 
 	std::string includepath;
-	cmdLine.get( "-outpath" )->getString( includepath );
+	cmdLine.get( "-includepath" )->getString( includepath );
 	if ( !includepath.empty() )
 		g_pIncludePaths.push_back( fs::absolute( std::move( includepath ) ) );
 

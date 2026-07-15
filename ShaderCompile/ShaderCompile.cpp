@@ -89,6 +89,7 @@ using namespace std::literals;
 
 using Clock = chrono::high_resolution_clock;
 static fs::path g_pShaderPath;
+static fs::path g_pOutputPath;
 static Clock::time_point g_flStartTime;
 static bool g_bVerbose	= false;
 static bool g_bVerbose2 = false;
@@ -449,7 +450,7 @@ static void OutputDynamicCombo( size_t& pnTotalFlushedSize, CUtlBuffer& pDynamic
 
 static fs::path GetVCSFilenames( const ShaderInfo_t& si )
 {
-	auto path = g_pShaderPath / "shaders"sv / "fxc"sv;
+	auto path = g_pOutputPath / "shaders"sv / "fxc"sv;
 
 	fs::directory_entry status( path );
 	if ( !status.exists() )
@@ -1200,7 +1201,7 @@ static std::unique_ptr<CfgProcessor::CfgEntryInfo[]> Shared_ParseListOfCompileCo
 			failed = true;
 			continue;
 		}
-		Parser::WriteInclude( g_pShaderPath / "include"sv / ( name + ".inc" ), name, file.target, conf.static_c, conf.dynamic_c, conf.skip, isCSGO );
+		Parser::WriteInclude( g_pOutputPath / "include"sv / ( name + ".inc" ), name, file.target, conf.static_c, conf.dynamic_c, conf.skip, isCSGO );
 		conf.name = std::move( name );
 		conf.crc32 = crc;
 		conf.target = file.target;
@@ -1475,6 +1476,7 @@ int main( int argc, const char* argv[] )
 	{
 		cmdLine.add( "", true, 1, 0, "", "-game" );
 		cmdLine.add( "", true, 1, 0, "", "-shaderpath" );
+		cmdLine.add( "", true, 1, 0, "", "-outpath" );
 		cmdLine.add( "0", false, 1, 0, "", "-threads" );
 		cmdLine.add( "", false, 0, 0, "", "-nompi" );
 		cmdLine.add( "", false, 0, 0, "", "-nop4" );
@@ -1486,6 +1488,7 @@ int main( int argc, const char* argv[] )
 	{
 		cmdLine.add( "", true, -1, ',', "Sets shader version", "-ver", "/ver", new ez::ezOptionValidator{ ez::ezOptionValidator::T, ez::ezOptionValidator::IN, validModels, std::size( validModels ), false } );
 		cmdLine.add( "", true, 1, 0, "Base path for shaders", "-shaderpath", "/shaderpath" );
+		cmdLine.add( "", true, 1, 0, "Output path for shaders and includes", "-outpath", "/outpath" );
 		cmdLine.add( "", false, 0, 0, "Skip crc check during compilation", "-force", "/force" );
 		cmdLine.add( "", false, 0, 0, "Calculate crc for shader", "-crc", "/crc" );
 		cmdLine.add( "", false, 0, 0, "Generate only header", "-dynamic", "/dynamic" );
@@ -1601,9 +1604,16 @@ int main( int argc, const char* argv[] )
 		return -1;
 	}
 
-	std::string path;
-	cmdLine.get( "-shaderpath" )->getString( path );
-	g_pShaderPath = fs::absolute( std::move( path ) );
+	std::string shaderpath, outputpath;
+	cmdLine.get( "-shaderpath" )->getString( shaderpath );
+	g_pShaderPath = fs::absolute( std::move( shaderpath ) );
+
+	if ( outputpath.empty() ) 
+		outputpath = shaderpath;
+	else 
+		cmdLine.get( "-outpath" )->getString( outputpath );
+
+	g_pOutputPath = fs::absolute( std::move( outputpath ) );
 
 	if ( parseLegacy )
 	{

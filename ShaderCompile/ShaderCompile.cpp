@@ -1192,7 +1192,7 @@ static std::unique_ptr<CfgProcessor::CfgEntryInfo[]> Shared_ParseListOfCompileCo
 	{
 		uint32_t crc;
 		std::string name = Parser::ConstructName( file.name, file.target, file.version );
-		if ( Parser::CheckCrc( g_pShaderPath / file.name, root, g_pIncludePaths, name, crc ) && !bForce )
+		if ( Parser::CheckCrc( g_pShaderPath / file.name, g_pOutputPath, root, g_pIncludePaths, name, crc ) && !bForce )
 			continue;
 
 		CfgProcessor::ShaderConfig conf;
@@ -1704,7 +1704,7 @@ int main( int argc, const char* argv[] )
 		{
 			const std::string name = Parser::ConstructName( file.name, file.target, file.version );
 			uint32_t crc = 0;
-			Parser::CheckCrc( g_pShaderPath / file.name, root, g_pIncludePaths, name, crc );
+			Parser::CheckCrc( g_pShaderPath / file.name, g_pOutputPath, root, g_pIncludePaths, name, crc );
 			std::cout << crc << std::endl;
 		}
 		return 0;

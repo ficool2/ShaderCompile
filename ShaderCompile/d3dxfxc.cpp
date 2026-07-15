@@ -23,7 +23,10 @@
 #include <malloc.h>
 #include <vector>
 
+#include <filesystem>
 #pragma comment( lib, "D3DCompiler" )
+
+namespace fs = std::filesystem;
 
 CSharedFile::CSharedFile( std::vector<char>&& data ) noexcept : std::vector<char>( std::forward<std::vector<char>>( data ) )
 {
@@ -31,12 +34,15 @@ CSharedFile::CSharedFile( std::vector<char>&& data ) noexcept : std::vector<char
 
 void FileCache::Add( const std::string& fileName, std::vector<char>&& data )
 {
-	const auto& it = m_map.find( fileName );
+	fs::path path = fileName;
+	std::string baseFileName = path.filename().string();
+
+	const auto& it = m_map.find( baseFileName );
 	if ( it != m_map.end() )
 		return;
 
 	CSharedFile file( std::forward<std::vector<char>>( data ) );
-	m_map.emplace( fileName, std::move( file ) );
+	m_map.emplace( baseFileName, std::move( file ) );
 }
 
 const CSharedFile* FileCache::Get( const std::string& filename ) const

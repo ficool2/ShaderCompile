@@ -79,7 +79,7 @@ std::string_view Parser::GetTarget( const std::string& baseName )
 }
 
 template <typename T>
-static bool ReadFile( const fs::path& name, const std::string& srcPath, std::vector<std::string>& includes, T& func )
+static bool ReadFile( const fs::path& name, const std::string& srcPath, const std::vector<fs::path>& includePaths, std::vector<std::string>& includes, T& func )
 {
 	const auto fullPath = fs::absolute( name );
 	const auto parent = fullPath.parent_path();
@@ -130,8 +130,37 @@ static bool ReadFile( const fs::path& name, const std::string& srcPath, std::vec
 			}
 
 			reducedLine.clear();
-			ReadFile( parent / incl, srcPath, includes, func );
-			continue;
+			fs::path includeFile = parent / incl;
+
+			if ( !fs::exists( includeFile ) )
+			{
+			    bool found = false;
+
+			    for ( const auto& dir : includePaths )
+			    {
+			        includeFile = dir / incl;
+
+			        if ( fs::exists( includeFile ) )
+			        {
+			            found = true;
+			            break;
+			        }
+			    }
+
+			    if ( !found )
+			    {
+			        std::cout << clr::red
+			                  << "Unable to locate include \""
+			                  << incl
+			                  << "\""
+			                  << clr::reset
+			                  << std::endl;
+			        return false;
+			    }
+			}
+
+			ReadFile( includeFile, srcPath, includePaths, includes, func );
+            continue;
 		}
 		reducedLine.clear();
 		func( line );
@@ -145,7 +174,7 @@ static bool ReadFile( const fs::path& name, const std::string& srcPath, std::vec
 
 static constexpr const char validL[] = { 'v', 'p', 'g', 'h', 'd' };
 static constexpr const char validU[] = { 'V', 'P', 'G', 'H', 'D' };
-bool Parser::ParseFile( const fs::path& name, const std::string& root, const std::string_view& target, const std::string_view& version, CfgProcessor::ShaderConfig& conf )
+bool Parser::ParseFile( const fs::path& name, const std::string& root, const std::vector<fs::path>& includePaths, const std::string_view& target, const std::string_view& version, CfgProcessor::ShaderConfig& conf )
 {
 	using re2::RE2;
 	conf.centroid_mask = 0U;
@@ -227,7 +256,7 @@ bool Parser::ParseFile( const fs::path& name, const std::string& root, const std
 		}
 	};
 
-	return ReadFile( name, root, conf.includes, read );
+	return ReadFile( name, root, includePaths, conf.includes, read );
 }
 
 void Parser::WriteInclude( const fs::path& fileName, const std::string& name, const std::string_view& target, const std::vector<Combo>& static_c,
@@ -365,7 +394,7 @@ void Parser::WriteInclude( const fs::path& fileName, const std::string& name, co
 	fs::permissions( fileName, fs::perms::owner_read );
 }
 
-bool Parser::CheckCrc( const fs::path& sourceFile, const std::string& root, const std::string& name, uint32_t& crc32 )
+bool Parser::CheckCrc( const fs::path& sourceFile, const std::string& root, const std::vector<fs::path>& includePaths, const std::string& name, uint32_t& crc32 )
 {
 	uint32_t binCrc = 0;
 	{
@@ -384,7 +413,7 @@ bool Parser::CheckCrc( const fs::path& sourceFile, const std::string& root, cons
 	{
 		file += line + "\n";
 	};
-	if ( !ReadFile( sourceFile, root, includes, read ) )
+	if ( !ReadFile( sourceFile, root, includePaths, includes, read ) )
 		return false;
 
 	crc32 = CRC32::ProcessSingleBuffer( file.c_str(), file.size() );

@@ -89,6 +89,7 @@ using namespace std::literals;
 
 using Clock = chrono::high_resolution_clock;
 static fs::path g_pShaderPath;
+static std::vector<fs::path> g_pIncludePaths;
 static fs::path g_pOutputPath;
 static Clock::time_point g_flStartTime;
 static bool g_bVerbose	= false;
@@ -1191,11 +1192,11 @@ static std::unique_ptr<CfgProcessor::CfgEntryInfo[]> Shared_ParseListOfCompileCo
 	{
 		uint32_t crc;
 		std::string name = Parser::ConstructName( file.name, file.target, file.version );
-		if ( Parser::CheckCrc( g_pShaderPath / file.name, root, name, crc ) && !bForce )
+		if ( Parser::CheckCrc( g_pShaderPath / file.name, root, g_pIncludePaths, name, crc ) && !bForce )
 			continue;
 
 		CfgProcessor::ShaderConfig conf;
-		if ( !Parser::ParseFile( g_pShaderPath / file.name, root, file.target, file.version, conf ) )
+		if ( !Parser::ParseFile( g_pShaderPath / file.name, root, g_pIncludePaths, file.target, file.version, conf ) )
 		{
 			std::cout << clr::red << "Failed to parse "sv << file.name << clr::reset << std::endl;
 			failed = true;
@@ -1476,6 +1477,7 @@ int main( int argc, const char* argv[] )
 	{
 		cmdLine.add( "", true, 1, 0, "", "-game" );
 		cmdLine.add( "", true, 1, 0, "", "-shaderpath" );
+		cmdLine.add( "", true, 1, 0, "", "-includepath" );
 		cmdLine.add( "", true, 1, 0, "", "-outpath" );
 		cmdLine.add( "0", false, 1, 0, "", "-threads" );
 		cmdLine.add( "", false, 0, 0, "", "-nompi" );
@@ -1488,6 +1490,7 @@ int main( int argc, const char* argv[] )
 	{
 		cmdLine.add( "", true, -1, ',', "Sets shader version", "-ver", "/ver", new ez::ezOptionValidator{ ez::ezOptionValidator::T, ez::ezOptionValidator::IN, validModels, std::size( validModels ), false } );
 		cmdLine.add( "", true, 1, 0, "Base path for shaders", "-shaderpath", "/shaderpath" );
+		cmdLine.add( "", true, 1, 0, "Include path for shaders", "-includepath", "/includepath" );
 		cmdLine.add( "", true, 1, 0, "Output path for shaders and includes", "-outpath", "/outpath" );
 		cmdLine.add( "", false, 0, 0, "Skip crc check during compilation", "-force", "/force" );
 		cmdLine.add( "", false, 0, 0, "Calculate crc for shader", "-crc", "/crc" );
@@ -1604,14 +1607,19 @@ int main( int argc, const char* argv[] )
 		return -1;
 	}
 
-	std::string shaderpath, outputpath;
+	std::string shaderpath;
 	cmdLine.get( "-shaderpath" )->getString( shaderpath );
 	g_pShaderPath = fs::absolute( std::move( shaderpath ) );
 
+	std::string includepath;
+	cmdLine.get( "-outpath" )->getString( includepath );
+	if ( !includepath.empty() )
+		g_pIncludePaths.push_back( fs::absolute( std::move( includepath ) ) );
+
+	std::string outputpath;
+	cmdLine.get( "-outpath" )->getString( outputpath );
 	if ( outputpath.empty() ) 
 		outputpath = shaderpath;
-	else 
-		cmdLine.get( "-outpath" )->getString( outputpath );
 
 	g_pOutputPath = fs::absolute( std::move( outputpath ) );
 
@@ -1696,7 +1704,7 @@ int main( int argc, const char* argv[] )
 		{
 			const std::string name = Parser::ConstructName( file.name, file.target, file.version );
 			uint32_t crc = 0;
-			Parser::CheckCrc( g_pShaderPath / file.name, root, name, crc );
+			Parser::CheckCrc( g_pShaderPath / file.name, root, g_pIncludePaths, name, crc );
 			std::cout << crc << std::endl;
 		}
 		return 0;
@@ -1710,7 +1718,7 @@ int main( int argc, const char* argv[] )
 		for ( const auto& file : files )
 		{
 			CfgProcessor::ShaderConfig conf;
-			if ( !Parser::ParseFile( g_pShaderPath / file.name, root, file.target, file.version, conf ) )
+			if ( !Parser::ParseFile( g_pShaderPath / file.name, root, g_pIncludePaths, file.target, file.version, conf ) )
 			{
 				std::cout << clr::red << "Failed to parse "sv << file.name << clr::reset << std::endl;
 				failed = true;
@@ -1739,9 +1747,9 @@ int main( int argc, const char* argv[] )
 
 	if ( parseLegacy )
 	{
-		cmdLine.get( "-game" )->getString( path );
+		cmdLine.get( "-game" )->getString( shaderpath );
 		fs::path src = g_pShaderPath / "shaders"sv / "fxc"sv;
-		fs::path game = fs::absolute( std::move( path ) ) / "shaders"sv / "fxc"sv;
+		fs::path game = fs::absolute( std::move( shaderpath ) ) / "shaders"sv / "fxc"sv;
 		std::error_code c;
 		fs::create_directories( game, c );
 

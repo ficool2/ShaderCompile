@@ -47,8 +47,7 @@ void FileCache::Add( const std::string& fileName, std::vector<char>&& data )
 
 const CSharedFile* FileCache::Get( const std::string& filename ) const
 {
-	// Search the cache first
-	const auto find = m_map.find( filename );
+	const auto find = m_map.find( fs::path( filename ).filename().string() );
 	if ( find != m_map.cend() )
 		return &find->second;
 	return nullptr;
